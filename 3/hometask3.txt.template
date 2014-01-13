@@ -1,0 +1,60 @@
+NGS, Hometask 3 (BWA)
+=====================
+:Date:      2014-01-05
+:Revision:  0.3
+
+== 1. Статистика ридов 454
+=== Покрытие генома
+
+.график покрытия
+image:img\coverage_plot.svg[]
+
+- процент покрытия генома {{coverage_percentage}} %
+
+- среднее покрытие {{coverage_avg}}
+
+=== Распределение длин инделов
+
+image:img\indels_distribution.svg[]
+
+=== Распределение зависимости количества инделов от длины гомополимерного участка
+
+image:img\indels_distribution_homopolymer.svg[]
+
+=== Зависимость качества нуклеотидов
+
+- при ошибке вставки
+
+image:img\qualities_insertion.svg[]
+
+- при замене
+
+image:img\qualities_mismatch.svg[]
+
+=== Таблица частот замен, вставок, удалений
+
+[options="header,footer"]
+|=======================
+|Read\Reference|    A   |    C   |    G   |    T   |   _  
+| A            |    _   | {{CA}} | {{GA}} | {{TA}} | {{_A}}
+| C            | {{AC}} |    _   | {{GC}} | {{TC}} | {{_C}}
+| G            | {{AG}} | {{CG}} |    _   | {{TG}} | {{_G}}
+| T            | {{AT}} | {{CT}} | {{GT}} |    _   | {{_T}}
+| _            | {{A_}} | {{C_}} | {{G_}} | {{T_}} |    _ 
+|=======================
+
+== 2. bowtie2
+
+=== Распределение зависимости количества инделов от длины гомополимерного участка
+
+image:img\bowtie_indels_distribution_homopolymer.svg[]
+
+=== Зависимость качества нуклеотидов
+
+- при ошибке вставки
+
+image:img\bowtie_qualities_insertion.svg[]
+
+- при замене
+
+image:img\bowtie_qualities_mismatch.svg[]
