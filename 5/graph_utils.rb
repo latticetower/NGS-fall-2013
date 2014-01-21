@@ -8,6 +8,7 @@
   @@node_outdegrees
   @@node_indegrees
   @@node_outedges
+  #@@node_inedges
   @@kmer_size
   
   def self.nodes
@@ -19,11 +20,12 @@
     @@kmers_no_by_str = {}
     @@kmers_str_by_no = []
     @@kmer_coverage = []
-    @@edges = []
+    @@edges = {}
     @@kmer_array_size = 0
     @@node_outdegrees = []
     @@node_indegrees = []
     @@node_outedges = []
+    #@@node_inedges = []
   end
   
   def self.add_nodes(node_str)
@@ -43,17 +45,17 @@
   end
   
   def self.edge_exists?(first_node_no, second_node_no, label_str)
+    return false unless @@edges.has_key? first_node_no
     return false if @@edges[first_node_no].nil?
+    return false if @@edges[first_node_no].has_key? first_node_no
     return false if @@edges[first_node_no][first_node_no].nil?
     @@edges[first_node_no][first_node_no].include? label_str
   end
  
   def self.add_edges(first_node_no, second_node_no, label_str)
-    @@edges[first_node_no] ||= []
+    @@edges[first_node_no] ||= {}
     @@node_outdegrees[first_node_no] ||= 0
-    
     @@node_indegrees[second_node_no] ||= 0
-    
     @@node_outedges[first_node_no] ||= []
 
     @@edges[first_node_no][second_node_no] ||= []
@@ -66,15 +68,16 @@
   end
   
   def self.get_edge_labels(first_node_no, second_node_no)
-    return [] if @@edges[first_node_no].nil?
+    return [] unless @@edges.has_key? first_node_no
+    return [] unless @@edges[first_node_no].has_key? second_node_no
     @@edges[first_node_no][second_node_no] 
   end
   
   def self.check_node_degrees_and_remove_if_orphan(node)
     return if @@node_indegrees[node] > 0
     return if @@node_outdegrees[node] > 0
-    #if here- means that node is orphan
-    puts "fesffse #{@@node_indegrees[node]} #{@@node_outdegrees[node]}" if node == 0
+    # if here- means that node is orphan
+    # puts "fesffse #{@@node_indegrees[node]} #{@@node_outdegrees[node]}" if node == 0
     self.remove_nodes(node)
   end
   
@@ -128,6 +131,22 @@
     end
     referencefile.close
   end
+  
+  def self.read_fastq(filename)
+    self.clear_all
+    
+    referencefile = File.new(filename)
+    while not referencefile.eof do
+      str = referencefile.gets().strip
+      str = referencefile.gets().strip
+      yield(str) if block_given?
+      @@strings << str
+      str = referencefile.gets().strip
+      str = referencefile.gets().strip
+    end
+    referencefile.close
+  end
+  
   def self.set_kmer_size(k)
     @@kmer_size = k
     # puts "#{@@kmer_size }"
@@ -211,8 +230,8 @@
         next if @@edges[index1].nil?
         @@kmer_array_size.times do |index2|
           next if @@edges[index1][index2].nil? or @@edges[index1][index2].size < 1
-          puts "#{index2} #{@@node_outdegrees[index2]}"
-          if @@node_outdegrees[index2] == 1
+          # puts "#{index2} #{@@node_outdegrees[index2]}"
+          if @@node_outdegrees[index2] == 1 && @@node_indegrees[index2] == 1
             k = @@node_outedges[index2][0]
             #next if @@edges[index2][k].nil? or @@edges[index2][k].size < 1
             label1s = self.get_edge_labels(index1, index2)
@@ -262,13 +281,12 @@
   
   def self.write_to_fasta_and_dot(outfile_fasta, outfile_dot)
     file_fasta = File.new(outfile_fasta, 'w')
-    file_fasta.puts ">-------------------nodes-----------------------------"
-    puts @@kmers_str_by_no[0]
+    # file_fasta.puts ">-------------------nodes-----------------------------"
     @@kmer_array_size.times do |i|
       next if @@kmers_str_by_no[i].nil? or @@kmers_str_by_no[i].size < 1
       file_fasta.puts ">node number #{i} (#{@@node_outdegrees[i]} outgoing edges, #{@@node_indegrees[i]} ingoing edges):", "#{@@kmers_str_by_no[i]}" 
     end
-    file_fasta.puts ">---------------------edges:-----------------------"
+    # file_fasta.puts ">---------------------edges:-----------------------"
     
     file_dot = File.new(outfile_dot, 'w')
     file_dot.puts "digraph g {"
@@ -280,8 +298,11 @@
       @@kmer_array_size.times do |j|
         next if @@edges[i][j].nil? or @@edges[i][j].size < 1
         @@edges[i][j].each do |str|
-          file_fasta.puts ">edge N#{edges_iterator}, from node #{i} to node #{j}:", 
-                    "#{str}"
+          file_fasta.puts ">edge N#{edges_iterator}, from node #{i} to node #{j}:"
+          splitter = str.size/78
+          (splitter + 1).times do |k| 
+            file_fasta.puts str.slice(78*k, [78, str.size - 78*k].min)
+          end
           file_dot.puts "#{i} -> #{j} [label=\"N#{edges_iterator}, w=#{self.get_edge_weight(str)}\"];"
           
           edges_iterator += 1

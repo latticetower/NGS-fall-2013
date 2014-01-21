@@ -6,7 +6,7 @@ if ARGV.size < 3
   puts " - k-mer length (55 by default)"
   puts "- output file path"
   # puts "(additional parameter) max number of iterations"
-  return
+  exit
 end
 # start of processing
 require 'graphviz'
@@ -14,16 +14,21 @@ require './graph_utils'
 #now reference_string contains reference genome
 # puts reference_string
 
-puts "reference string processed"
-
 k = ARGV[1].to_i
 k = 55 if k == 0
 GraphUtils.clear_all
 
 GraphUtils.set_kmer_size(k)
-GraphUtils.read_fasta(ARGV[0]) do |read|
-  GraphUtils.build_kmers(read)
-  GraphUtils.build_kmers(GraphUtils.get_complement(read.reverse))
+if ARGV[0].index(".fastq").nil?
+  GraphUtils.read_fasta(ARGV[0]) do |read|
+    GraphUtils.build_kmers(read)
+    GraphUtils.build_kmers(GraphUtils.get_complement(read))
+  end
+else
+  GraphUtils.read_fastq(ARGV[0]) do |read|
+    GraphUtils.build_kmers(read)
+    GraphUtils.build_kmers(GraphUtils.get_complement(read))
+  end
 end
 #
 GraphUtils.simplify!
