@@ -243,7 +243,7 @@
             label1 = label1s[0]
             label2 = label2s[0]
             # puts label1
-            new_edge_label = label1.slice(0, label1.size - @@kmer_size + 1) + label2
+            new_edge_label = label1.slice(0, label1.size - @@kmer_size) + label2
             # puts new_edge_label
             self.remove_edges(index1, index2)
             self.remove_edges(index2, k)
@@ -284,11 +284,8 @@
     # file_fasta.puts ">-------------------nodes-----------------------------"
     @@kmer_array_size.times do |i|
       next if @@kmers_str_by_no[i].nil? or @@kmers_str_by_no[i].size < 1
-      next if @@node_outdegrees[i] == 0 && @@node_indegrees[i] == 0
       file_fasta.puts ">node number #{i} (#{@@node_outdegrees[i]} outgoing edges, #{@@node_indegrees[i]} ingoing edges):", "#{@@kmers_str_by_no[i]}" 
     end
-    
-    
     # file_fasta.puts ">---------------------edges:-----------------------"
     
     file_dot = File.new(outfile_dot, 'w')
