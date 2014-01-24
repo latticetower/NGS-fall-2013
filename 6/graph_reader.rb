@@ -28,19 +28,27 @@ else
     GraphUtils.build_kmers_with_complement(read)
   end
 end
+
+GraphUtils.print_coverages('coverages.txt')
 #
 GraphUtils.simplify!
-r = 0
-if ARGV[2] == '1'
-  r = GraphUtils.remove_tails!
-else
-  r = GraphUtils.remove_tips!
-end
+GraphUtils.write_to_fasta("_simple_" + ARGV[0] + ".fasta")
+r = 1
 f = File.new("results/_" + ARGV[0] + "_" + ARGV[2] + "_with_k#{k}.txt", 'w')
-f.puts "Deleted: #{r}"
+while r > 0 do
+  r = 0
+  if ARGV[2] == '1'
+    r = GraphUtils.remove_tails!
+  else
+    r = GraphUtils.remove_tips!
+  end
+  f.puts "Deleted: #{r}"
+  GraphUtils.simplify! if r > 0
+end
+
 f.close
 
-GraphUtils.simplify! if r > 0
+
 #GraphUtils.print_to_file
 #GraphUtils.write_to_console
 #GraphUtils.write_to_fasta("results/_" + ARGV[0] + ".fasta")

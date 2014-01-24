@@ -15,7 +15,31 @@
   def self.nodes
     @@kmers_no_by_str.each_pair
   end
+  def self.print_coverages(outputfile)
+    f = File.new(outputfile, 'w')
+    @@kmers_no_by_str.each_pair do |k, v|
+      f.puts k
+      f.puts @@kmer_coverage[v]
+    end
+    f.close
+  end
+  def self.load_coverages(inputfile)
   
+    f = File.new(inputfile)
+    while not f.eof? do
+      str = f.gets.strip
+      str2 = f.gets
+      unless @@kmers_no_by_str.has_key?(str)
+        @@kmers_no_by_str[str] = @@kmer_array_size
+        @@kmers_str_by_no[@@kmer_array_size] = str
+        
+        @@node_outdegrees[@@kmer_array_size] ||= 0
+        @@node_indegrees[@@kmer_array_size] ||= 0
+        @@kmer_array_size += 1
+      end
+      @@kmer_coverage[@@kmers_no_by_str[str]] = str2.to_i
+    end
+  end
   def self.clear_all  
     @@strings = []
     @@kmers_no_by_str = {}
@@ -31,6 +55,7 @@
   end
   
   def self.add_nodes(node_str)
+  puts "ff" if node_str.size!=55
     if @@kmers_no_by_str.has_key? node_str
       @@kmer_coverage[@@kmers_no_by_str[node_str]] += 1
       return @@kmers_no_by_str[node_str]
@@ -167,10 +192,11 @@
     # puts "#{@@kmer_size }"
     first_node = read.slice(0, k)
     first_node_no = self.add_nodes(first_node)
-    
+    puts "build kmers" if first_node.size!= 55
     (read.size - k).times do |i|
       edge_label = first_node + read[k + i].chr
       second_node = edge_label.slice(1, k)
+         puts "build kmers" if first_node.size!= 55
       second_node_no = self.add_nodes(second_node)
       unless self.edge_exists?(first_node_no, second_node_no, edge_label)
         self.add_edges(first_node_no, second_node_no, edge_label)
@@ -181,15 +207,31 @@
     end
   end
   
+  def self.load_edge(read)
+    k = @@kmer_size
+    first_node = read.slice(0, k)
+    first_node_no = self.add_nodes(first_node)
+       puts "load edge kmers" if first_node.size!= 55
+    second_node = read.slice(read.size - k-1, k)
+    puts second_node.size if second_node.size!=first_node.size
+    second_node_no = self.add_nodes(second_node)
+    
+    unless self.edge_exists?(first_node_no, second_node_no, read)
+      self.add_edges(first_node_no, second_node_no, read)
+    end
+  end
+  
   def self.build_kmers_with_complement(read)
+    return if read.size <= @@kmer_size 
     # GraphUtils.get_complement(read)
     k = @@kmer_size 
     # puts "#{@@kmer_size }"
     first_node = read.slice(0, k)
     first_node_no = self.add_nodes(first_node)
-    
+       puts "build kmers compl #{read.size}" if first_node.size!= 55
     last_node_compl = GraphUtils.get_complement(first_node) 
     last_node_compl_no = self.add_nodes(last_node_compl)
+     puts "build kmers conpl2" if last_node_compl.size!= 55
     # puts "first node: #{first_node_no} - #{first_node}, last: #{last_node_compl_no} #{last_node_compl}"
     (read.size - k).times do |i|
       edge_label = first_node + read[k + i].chr
@@ -197,12 +239,13 @@
       
       second_node = edge_label.slice(1, k)
       second_node_no = self.add_nodes(second_node)
-      
+      #   puts "build kmers c1" if first_node.size!= 55
       prev_node_compl = edge_label_compl.slice(0, k)
       prev_node_compl_no = self.add_nodes(prev_node_compl)
+      #   puts "build kmers c2" if first_node.size!= 55
       # puts "first node cuct: #{first_node_no} - #{first_node}, last: #{prev_node_compl_no} #{prev_node_compl}"
       # exit
-    
+    puts last_node_compl.size if last_node_compl.size!=first_node.size
       unless self.edge_exists?(first_node_no, second_node_no, edge_label)
         self.add_edges(first_node_no, second_node_no, edge_label)
       end
@@ -222,13 +265,8 @@
   
   def self.write_to_fasta(outputfile)
     file = File.new(outputfile, 'w')
-    file.puts ">-------------------nodes-----------------------------"
-    puts @@kmers_str_by_no[0]
-    @@kmer_array_size.times do |i|
-      next if @@kmers_str_by_no[i].nil? or @@kmers_str_by_no[i].size < 1
-      file.puts ">node number #{i} (#{@@node_outdegrees[i]} outgoing edges, #{@@node_indegrees[i]} ingoing edges):", "#{@@kmers_str_by_no[i]}" 
-    end
-    file.puts ">---------------------edges:-----------------------"
+    #file.puts ">-------------------nodes-----------------------------"
+    #file.puts ">---------------------edges:-----------------------"
     @@kmer_array_size.times do |i|
       next if @@edges[i].nil?
       @@kmer_array_size.times do |j|
@@ -336,7 +374,10 @@
             puts "got bulge, do nothing"
             next
           end
-          min_weight = @@node_outedges[index2].map{|node2|  @@edges[index2][node2] }.inject(:+).map{|lbl| @@edge_weights[lbl] }.min
+          min_edges = @@node_outedges[index2].map{|node2|  @@edges[index2][node2] }.inject(:+)
+          min_weight = min_edges.map{|lbl| @@edge_weights[lbl] }.min
+          min_length = min_edges.map{|lbl| lbl.size }.min
+          
           outnodes_size = @@node_outedges[index2].size
           # exit#
           label1 = label1s[0] 
@@ -345,7 +386,7 @@
           end
           w = @@edge_weights[label1]
           # puts "yy min weight: #{min_weight} - #{w}"
-          if (w <= 20 and label1.size <= 2*@@kmer_size) or ((w - min_weight).abs < 0.5 and outnodes_size > 1)
+          if (w <= 20 and label1.size <= 2*@@kmer_size) or ((w - min_weight).abs < 0.5 and outnodes_size > 1 and ( label1.size - min_length).abs<0.5)
             # puts "in remove edges"
             # new_edge_label = label1.slice(0, label1.size - @@kmer_size + 1) + label2
             # puts new_edge_label
@@ -371,7 +412,10 @@
           end
           label1 = label1s[0]
           #TODO: fix
-          min_weight = @@node_inedges[index2].map{|node2|  @@edges[node2][index2] }.inject(:+).map{ |lbl| @@edge_weights[lbl] }.min
+          min_edges = @@node_inedges[index2].map{|node2|  @@edges[node2][index2] }.inject(:+)
+          min_weight = min_edges.map{ |lbl| @@edge_weights[lbl] }.min
+          min_length = min_edges.map{ |lbl| lbl.size }.min
+          
           innodes_size = @@node_inedges[index2].size
           # puts "min weight: #{min_weight}"
           label1 = label1s[0] 
@@ -380,7 +424,7 @@
           end
           w = @@edge_weights[label1]
           # puts "min weight: #{min_weight} - #{w}"
-          if (w <= 20 and label1.size <= 2*@@kmer_size) or ((w - min_weight).abs < 0.5 and innodes_size > 1)
+          if (w <= 20 and label1.size <= 2*@@kmer_size) or ((w - min_weight).abs < 0.5 and innodes_size > 1 and (label1.size - min_length).abs < 0.5)
 
             # puts label1
             # new_edge_label = label1.slice(0, label1.size - @@kmer_size + 1) + label2
@@ -479,11 +523,11 @@
   def self.write_to_fasta_and_dot(outfile_fasta, outfile_dot)
     file_fasta = File.new(outfile_fasta, 'w')
     # file_fasta.puts ">-------------------nodes-----------------------------"
-    @@kmer_array_size.times do |i|
-      next if @@kmers_str_by_no[i].nil? or @@kmers_str_by_no[i].size < 1
-      next if @@node_outdegrees[i] == 0 && @@node_indegrees[i] == 0
+#    @@kmer_array_size.times do |i|
+#      next if @@kmers_str_by_no[i].nil? or @@kmers_str_by_no[i].size < 1
+#      next if @@node_outdegrees[i] == 0 && @@node_indegrees[i] == 0
       #file_fasta.puts ">node number #{i} (#{@@node_outdegrees[i]} outgoing edges, #{@@node_indegrees[i]} ingoing edges):", "#{@@kmers_str_by_no[i]}" 
-    end
+#    end
     
     
     # file_fasta.puts ">---------------------edges:-----------------------"
